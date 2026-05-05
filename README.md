@@ -12,8 +12,12 @@
 - 每題可勾選 Asked、Positive / Negative / Unclear
 - 每題可輸入病人回答或臨床筆記
 - 每題包含 follow-up questions 與 clinical hint
+- 問句卡片預設收起，可用 Show details / Hide details 展開或收合
 - 使用 localStorage 自動保存本機 session
 - 一鍵產生英文問診摘要
+- 支援四種輸出格式：Brief English summary、Full psychiatric intake note、Bilingual teaching note、Risk assessment paragraph
+- 自動整理 positive symptom clusters
+- 自動整理 pertinent negatives
 - 複製英文問句
 - 響應式版面，支援手機與桌機
 - 視覺風格沿用 Psychiatry Brain 的暖米色系與卡片配置
@@ -55,6 +59,8 @@ The first question bank is adapted and translated from psychiatric interview tea
 ## Privacy Note
 
 Session notes are saved only in the user's browser through `localStorage`. The static GitHub Pages site has no backend and does not upload patient data. Do not enter personally identifiable patient information on shared computers.
+
+V3 intentionally does not include session import/export.
 
 ## Local Preview
 

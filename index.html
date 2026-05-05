@@ -229,10 +229,13 @@
       box-shadow: 0 12px 34px rgba(80, 48, 24, 0.07);
     }
 
+    .question-card.collapsed .question-body { display: none; }
+
     .question-top {
       display: grid;
-      grid-template-columns: auto 1fr;
+      grid-template-columns: auto 1fr auto;
       gap: 12px;
+      align-items: start;
       padding: 18px;
     }
 
@@ -284,6 +287,21 @@
 
     textarea.note-input:focus { border-color: var(--accent); box-shadow: 0 0 0 4px rgba(140, 79, 43, 0.12); }
     .copy-button { justify-self: start; padding: 9px 12px; }
+
+    .toggle-card {
+      min-height: 36px;
+      padding: 0 12px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: var(--surface);
+      color: var(--accent);
+      font-size: 13px;
+      font-weight: 850;
+      white-space: nowrap;
+      transition: all 0.2s;
+    }
+
+    .toggle-card:hover { border-color: var(--accent); background: var(--accent-soft); }
 
     .summary-stats { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
     .stat { border: 1px solid var(--line); border-radius: 16px; background: var(--surface); padding: 12px; }
@@ -431,6 +449,12 @@
           <div class="stat"><span class="stat-value" id="stat-negative">0</span><span class="stat-label">Negative</span></div>
           <div class="stat"><span class="stat-value" id="stat-skipped">0</span><span class="stat-label">Skipped flows</span></div>
         </div>
+        <select class="field" id="note-format-select" aria-label="Select note format">
+          <option value="brief">Brief English summary</option>
+          <option value="intake">Full psychiatric intake note</option>
+          <option value="bilingual">Bilingual teaching note</option>
+          <option value="risk">Risk assessment paragraph</option>
+        </select>
         <textarea class="summary-output" id="summary-output" aria-label="Generated English Summary" placeholder="Generated English Summary will appear here."></textarea>
         <div class="summary-actions">
           <button class="compact-button" id="generate-summary" type="button">Generate English Summary</button>
@@ -539,7 +563,7 @@
 
     let mode = "bank";
     let activeFlow = ALL;
-    let session = { questions: {}, skippedFlows: [], summary: "" };
+    let session = { questions: {}, skippedFlows: [], collapsedQuestions: {}, summary: "" };
 
     const elements = {
       totalPill: document.querySelector("#total-pill"),
@@ -558,6 +582,7 @@
       statPositive: document.querySelector("#stat-positive"),
       statNegative: document.querySelector("#stat-negative"),
       statSkipped: document.querySelector("#stat-skipped"),
+      noteFormatSelect: document.querySelector("#note-format-select"),
       toast: document.querySelector("#toast")
     };
 
@@ -570,13 +595,15 @@
         const raw = localStorage.getItem(STORAGE_KEY);
         if (raw) session = { ...session, ...JSON.parse(raw) };
       } catch (error) {
-        session = { questions: {}, skippedFlows: [], summary: "" };
+        session = { questions: {}, skippedFlows: [], collapsedQuestions: {}, summary: "" };
       }
       elements.summaryOutput.value = session.summary || "";
+      elements.noteFormatSelect.value = session.noteFormat || "brief";
     }
 
     function saveSession() {
       session.summary = elements.summaryOutput.value;
+      session.noteFormat = elements.noteFormatSelect.value;
       localStorage.setItem(STORAGE_KEY, JSON.stringify(session));
       updateStats();
     }
@@ -589,6 +616,11 @@
       const questionKey = typeof question === "string" ? question : getQuestionKey(question);
       if (!session.questions[questionKey]) session.questions[questionKey] = { asked: false, status: "", note: "" };
       return session.questions[questionKey];
+    }
+
+    function isQuestionCollapsed(question) {
+      const questionKey = typeof question === "string" ? question : getQuestionKey(question);
+      return session.collapsedQuestions?.[questionKey] !== false;
     }
 
     function initControls() {
@@ -651,14 +683,17 @@
 
     function renderQuestionCard(question) {
       const state = getQuestionState(question);
+      const questionKey = getQuestionKey(question);
+      const collapsed = isQuestionCollapsed(question);
       const followUps = question.followUps.map((followUp) => `<div class="follow-up"><strong>Follow-up:</strong> ${escapeHtml(followUp.english)}<br><span class="chinese">${escapeHtml(followUp.chinese)}</span></div>`).join("");
-      return `<article class="question-card" data-question-key="${escapeHtml(getQuestionKey(question))}">
+      return `<article class="question-card${collapsed ? " collapsed" : ""}" data-question-key="${escapeHtml(questionKey)}">
         <div class="question-top">
           <input class="asked-checkbox" type="checkbox" aria-label="Mark asked" data-action="asked" ${state.asked ? "checked" : ""}>
           <div>
             <div class="english">${escapeHtml(question.english)}</div>
             <div class="chinese">${escapeHtml(question.chinese)}</div>
           </div>
+          <button class="toggle-card" type="button" data-action="toggle-card" aria-expanded="${collapsed ? "false" : "true"}">${collapsed ? "Show details" : "Hide details"}</button>
         </div>
         <div class="question-body">
           <div class="meta-row">
@@ -713,38 +748,134 @@
       elements.statSkipped.textContent = session.skippedFlows.length;
     }
 
-    function generateSummary() {
-      const askedQuestions = QUESTION_BANK.filter((question) => getQuestionState(question).asked);
-      const lines = [
-        "The patient was interviewed using a structured psychiatric interview workflow.",
-        ""
-      ];
+    function getAskedQuestions() {
+      return QUESTION_BANK.filter((question) => getQuestionState(question).asked);
+    }
 
+    function getStatusQuestions(status) {
+      return QUESTION_BANK.filter((question) => getQuestionState(question).status === status);
+    }
+
+    function formatQuestionFinding(question, includeChinese = false) {
+      const state = getQuestionState(question);
+      const note = state.note.trim() ? ` - ${state.note.trim()}` : "";
+      const chinese = includeChinese ? ` / ${question.chinese}` : "";
+      return `${question.flow}: ${question.purpose}${chinese} (${state.status || "asked"})${note}`;
+    }
+
+    function buildPositiveSymptomClusters() {
+      const positives = getStatusQuestions("positive");
+      if (positives.length === 0) return ["Positive symptom clusters: No positive symptom clusters were marked." ];
+      const lines = ["Positive symptom clusters:"];
       for (const flow of FLOWS) {
-        const flowQuestions = askedQuestions.filter((question) => question.flow === flow);
-        if (flowQuestions.length === 0) {
-          if (session.skippedFlows.includes(flow)) lines.push(`${flow}: This section was skipped.`);
-          continue;
-        }
-
-        lines.push(`${flow}:`);
-        for (const question of flowQuestions) {
-          const state = getQuestionState(question);
-          const statusText = state.status ? state.status : "asked";
-          const note = state.note.trim() ? ` Patient answer: ${state.note.trim()}` : "";
-          lines.push(`- ${question.purpose}: ${statusText}.${note}`);
-        }
-        lines.push("");
+        const flowPositives = positives.filter((question) => question.flow === flow);
+        if (flowPositives.length > 0) lines.push(`- ${flow}: ${flowPositives.map((question) => question.purpose).join(", ")}`);
       }
+      return lines;
+    }
 
-      const riskStates = ["passive_si", "active_si", "suicide_plan", "violence_risk"].map((key) => {
-        const question = QUESTION_BANK.find((item) => item.summaryKey === key);
-        return question ? getQuestionState(question).status : "";
-      });
-      if (riskStates.includes("positive")) lines.push("Risk note: At least one safety-risk item was endorsed and requires clinical risk assessment and safety planning.");
-      if (askedQuestions.length === 0) lines.push("No interview items have been marked as asked yet.");
+    function buildPertinentNegatives() {
+      const negatives = getStatusQuestions("negative");
+      if (negatives.length === 0) return ["Pertinent negatives: No negative findings were marked." ];
+      return ["Pertinent negatives:", ...negatives.map((question) => `- Denied ${question.purpose} (${question.flow}).`)];
+    }
 
-      elements.summaryOutput.value = lines.join("\n").replace(/\n{3,}/g, "\n\n").trim();
+    function getFlowLines(flow, status = null) {
+      const asked = getAskedQuestions().filter((question) => question.flow === flow && (!status || getQuestionState(question).status === status));
+      if (asked.length === 0) return [session.skippedFlows.includes(flow) ? "This section was skipped." : "Not documented."];
+      return asked.map((question) => `- ${formatQuestionFinding(question)}`);
+    }
+
+    function generateBriefSummary() {
+      const lines = [
+        "Brief English summary",
+        "The patient was interviewed using a structured psychiatric interview workflow.",
+        "",
+        ...buildPositiveSymptomClusters(),
+        "",
+        ...buildPertinentNegatives()
+      ];
+      if (getAskedQuestions().length === 0) lines.push("", "No interview items have been marked as asked yet.");
+      return lines.join("\n");
+    }
+
+    function generateIntakeNote() {
+      return [
+        "Full psychiatric intake note",
+        "CC:",
+        ...getFlowLines("Opening / Agenda"),
+        "",
+        "HPI:",
+        ...getFlowLines("Chief Complaint / HPI"),
+        "",
+        "Past Psychiatric / Symptom Review:",
+        ...getFlowLines("Mood Symptoms"),
+        ...getFlowLines("Anxiety / Panic"),
+        ...getFlowLines("Mania / Hypomania"),
+        ...getFlowLines("Psychosis"),
+        "",
+        "Substance Use:",
+        ...getFlowLines("Substance Use"),
+        "",
+        "Family History:",
+        ...getFlowLines("Family History"),
+        "",
+        "Social / Developmental History:",
+        ...getFlowLines("Social / Developmental History"),
+        "",
+        "Mental Status Exam:",
+        ...getFlowLines("Mental Status Exam"),
+        "",
+        "Risk Assessment:",
+        ...getFlowLines("Safety Risk"),
+        "",
+        "Assessment:",
+        ...buildPositiveSymptomClusters(),
+        "",
+        "Plan:",
+        ...getFlowLines("Review / Summary")
+      ].join("\n");
+    }
+
+    function generateBilingualTeachingNote() {
+      const asked = getAskedQuestions();
+      const lines = ["Bilingual teaching note"];
+      for (const flow of FLOWS) {
+        const flowQuestions = asked.filter((question) => question.flow === flow);
+        if (flowQuestions.length === 0) continue;
+        lines.push("", flow);
+        for (const question of flowQuestions) lines.push(`- ${formatQuestionFinding(question, true)}`);
+      }
+      if (asked.length === 0) lines.push("No interview items have been marked as asked yet.");
+      return lines.join("\n");
+    }
+
+    function generateRiskAssessmentParagraph() {
+      const riskQuestions = QUESTION_BANK.filter((question) => question.flow === "Safety Risk" && getQuestionState(question).asked);
+      const positives = riskQuestions.filter((question) => getQuestionState(question).status === "positive");
+      const negatives = riskQuestions.filter((question) => getQuestionState(question).status === "negative");
+      const unclear = riskQuestions.filter((question) => getQuestionState(question).status === "unclear");
+      const lines = ["Risk assessment paragraph"];
+      if (riskQuestions.length === 0) {
+        lines.push("Safety risk items were not documented in this session.");
+        return lines.join("\n");
+      }
+      lines.push(`The safety assessment covered ${riskQuestions.length} item(s).`);
+      if (positives.length > 0) lines.push(`Endorsed risk item(s): ${positives.map((question) => question.purpose).join(", ")}. These require clinical risk assessment and safety planning.`);
+      if (negatives.length > 0) lines.push(`Pertinent negatives: ${negatives.map((question) => `denied ${question.purpose}`).join("; ")}.`);
+      if (unclear.length > 0) lines.push(`Unclear item(s): ${unclear.map((question) => question.purpose).join(", ")}.`);
+      return lines.join("\n");
+    }
+
+    function generateSummary() {
+      const format = elements.noteFormatSelect.value;
+      const generators = {
+        brief: generateBriefSummary,
+        intake: generateIntakeNote,
+        bilingual: generateBilingualTeachingNote,
+        risk: generateRiskAssessmentParagraph
+      };
+      elements.summaryOutput.value = (generators[format] || generateBriefSummary)().replace(/\n{3,}/g, "\n\n").trim();
       saveSession();
       showToast("已產生英文摘要");
     }
@@ -777,13 +908,14 @@
       if (button) setFlow(button.dataset.flow);
     });
     elements.skipFlow.addEventListener("click", toggleSkipCurrentFlow);
+    elements.noteFormatSelect.addEventListener("change", () => { saveSession(); generateSummary(); });
     document.querySelector("#clear-filters").addEventListener("click", () => { elements.searchInput.value = ""; activeFlow = ALL; elements.flowSelect.value = ALL; setMode("bank"); });
     document.querySelector("#generate-summary").addEventListener("click", generateSummary);
     document.querySelector("#generate-summary-top").addEventListener("click", () => { setMode("summary"); generateSummary(); });
     document.querySelector("#copy-summary").addEventListener("click", () => copyText(elements.summaryOutput.value, "已複製英文摘要"));
     document.querySelector("#clear-session").addEventListener("click", () => {
       if (!confirm("Clear all asked marks, notes, skipped flows, and summary?")) return;
-      session = { questions: {}, skippedFlows: [], summary: "" };
+      session = { questions: {}, skippedFlows: [], collapsedQuestions: {}, summary: "" };
       elements.summaryOutput.value = "";
       localStorage.removeItem(STORAGE_KEY);
       render();
@@ -805,6 +937,13 @@
       if (!card) return;
       if (event.target.dataset.action === "status") {
         updateQuestionState(card, (state) => { state.status = state.status === event.target.dataset.status ? "" : event.target.dataset.status; state.asked = true; });
+        render();
+      }
+      if (event.target.dataset.action === "toggle-card") {
+        const questionKey = card.dataset.questionKey;
+        if (!session.collapsedQuestions) session.collapsedQuestions = {};
+        session.collapsedQuestions[questionKey] = !isQuestionCollapsed(questionKey);
+        saveSession();
         render();
       }
       if (event.target.dataset.action === "copy-question") {

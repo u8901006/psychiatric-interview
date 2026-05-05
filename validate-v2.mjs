@@ -18,7 +18,22 @@ const requiredStrings = [
   "skip-flow",
   "question-bank-mode",
   "interview-flow-mode",
-  "summary-output"
+  "summary-output",
+  "toggle-card",
+  "collapsedQuestions",
+  ".question-card.collapsed",
+  "Show details",
+  "note-format-select",
+  "Brief English summary",
+  "Full psychiatric intake note",
+  "Bilingual teaching note",
+  "Risk assessment paragraph",
+  "Positive symptom clusters",
+  "Pertinent negatives",
+  "generateBriefSummary",
+  "generateIntakeNote",
+  "generateBilingualTeachingNote",
+  "generateRiskAssessmentParagraph"
 ];
 
 const missing = requiredStrings.filter((value) => !html.includes(value));
