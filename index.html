@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="description" content="精神科問診中英對照工具，依症狀與功能 cluster 整理常用英文問句。" />
-  <title>Psychiatric Interview · 精神科問診系統</title>
+  <meta name="description" content="精神科問診中英對照工作台，支援問診流程、勾選答案與英文摘要產生。" />
+  <title>Psychiatric Interview · 精神科問診工作台</title>
   <style>
     :root {
       --bg: #f6f1e8;
@@ -16,11 +16,12 @@
       --accent: #8c4f2b;
       --accent-soft: #ead2bf;
       --green: #586f52;
+      --red: #9f3d32;
+      --gold: #a9752b;
       --shadow: 0 20px 60px rgba(80, 48, 24, 0.12);
     }
 
     *, *::before, *::after { box-sizing: border-box; }
-
     html { scroll-behavior: smooth; }
 
     body {
@@ -28,21 +29,26 @@
       min-height: 100vh;
       background:
         radial-gradient(circle at top left, #fff9ef 0, rgba(255, 249, 239, 0) 38%),
-        radial-gradient(circle at top right, rgba(234, 210, 191, 0.74) 0, rgba(234, 210, 191, 0) 32%),
+        radial-gradient(circle at top right, rgba(234, 210, 191, 0.72) 0, rgba(234, 210, 191, 0) 32%),
         linear-gradient(160deg, #fff6ea 0, var(--bg) 52%, #ead8c6 100%);
       color: var(--text);
       font-family: "Noto Sans TC", "PingFang TC", "Helvetica Neue", Arial, sans-serif;
-      line-height: 1.65;
+      line-height: 1.6;
     }
 
-    button, input, select { font: inherit; }
-
+    button, input, select, textarea { font: inherit; }
+    button { cursor: pointer; }
     a { color: inherit; }
 
+    :focus-visible {
+      outline: 3px solid rgba(140, 79, 43, 0.45);
+      outline-offset: 2px;
+    }
+
     .shell {
-      width: min(1120px, calc(100% - 32px));
+      width: min(1360px, calc(100% - 32px));
       margin: 0 auto;
-      padding: 56px 0 40px;
+      padding: 36px 0 40px;
     }
 
     .hero {
@@ -50,62 +56,59 @@
       overflow: hidden;
       border: 1px solid var(--line);
       border-radius: 28px;
-      background: rgba(255, 250, 242, 0.82);
+      background: rgba(255, 250, 242, 0.84);
       box-shadow: var(--shadow);
-      padding: 38px;
+      padding: 34px;
     }
 
     .hero::after {
       content: "";
       position: absolute;
-      right: -80px;
-      top: -110px;
-      width: 280px;
-      height: 280px;
+      right: -96px;
+      top: -126px;
+      width: 320px;
+      height: 320px;
       border-radius: 999px;
       background: rgba(140, 79, 43, 0.12);
       border: 1px solid rgba(140, 79, 43, 0.18);
     }
 
     .eyebrow {
-      display: inline-flex;
-      gap: 8px;
-      align-items: center;
       color: var(--accent);
       font-size: 13px;
-      font-weight: 700;
+      font-weight: 800;
       letter-spacing: 0.12em;
       text-transform: uppercase;
     }
 
     h1 {
-      margin: 12px 0 10px;
-      max-width: 760px;
-      font-size: clamp(32px, 6vw, 58px);
+      margin: 10px 0;
+      max-width: 840px;
+      font-size: clamp(32px, 5vw, 56px);
       line-height: 1.08;
       letter-spacing: -0.04em;
     }
 
     .hero-copy {
-      max-width: 720px;
+      max-width: 760px;
       margin: 0;
       color: var(--muted);
       font-size: 17px;
     }
 
-    .hero-meta {
+    .hero-meta, .mode-tabs, .meta-row, .summary-actions {
       display: flex;
       flex-wrap: wrap;
       gap: 10px;
-      margin-top: 24px;
     }
 
-    .pill {
+    .hero-meta { margin-top: 22px; }
+
+    .pill, .tag {
       display: inline-flex;
       align-items: center;
-      gap: 7px;
-      min-height: 34px;
-      padding: 6px 12px;
+      min-height: 32px;
+      padding: 5px 11px;
       border: 1px solid var(--line);
       border-radius: 999px;
       background: var(--surface);
@@ -117,94 +120,96 @@
     .toolbar {
       position: sticky;
       top: 0;
-      z-index: 5;
+      z-index: 8;
       display: grid;
-      grid-template-columns: minmax(180px, 1fr) minmax(220px, 1.5fr) auto auto;
+      grid-template-columns: auto minmax(180px, 1fr) minmax(220px, 1.4fr) auto auto;
       gap: 10px;
       margin: 18px 0;
       padding: 14px;
       border: 1px solid rgba(216, 197, 171, 0.82);
       border-radius: 18px;
-      background: rgba(246, 241, 232, 0.86);
+      background: rgba(246, 241, 232, 0.9);
       backdrop-filter: blur(16px);
     }
 
-    .field, .action {
-      width: 100%;
-      min-height: 46px;
+    .mode-tabs {
+      gap: 6px;
+      align-items: center;
+    }
+
+    .mode-button, .field, .action, .compact-button, .status-button, .copy-button {
       border: 1px solid var(--line);
       border-radius: 14px;
       background: var(--surface);
       color: var(--text);
-      outline: none;
+      transition: transform 0.2s, background 0.2s, border-color 0.2s, color 0.2s;
     }
 
-    .field { padding: 0 14px; }
+    .mode-button, .action, .compact-button, .copy-button { font-weight: 800; }
+    .field, .action { width: 100%; min-height: 46px; }
+    .field { padding: 0 14px; outline: none; }
+    .field:focus { border-color: var(--accent); box-shadow: 0 0 0 4px rgba(140, 79, 43, 0.12); }
+    .mode-button { min-height: 42px; padding: 0 12px; color: var(--muted); }
+    .mode-button.active, .action:hover, .compact-button:hover, .copy-button:hover { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); }
+    .action { padding: 0 14px; color: var(--accent); }
 
-    .field:focus {
-      border-color: var(--accent);
-      box-shadow: 0 0 0 4px rgba(140, 79, 43, 0.12);
-    }
-
-    .action {
-      cursor: pointer;
-      padding: 0 14px;
-      color: var(--accent);
-      font-weight: 700;
-      transition: transform 0.2s, background 0.2s, border-color 0.2s;
-    }
-
-    .action:hover {
-      transform: translateY(-1px);
-      border-color: var(--accent);
-      background: var(--accent-soft);
-    }
-
-    .layout {
+    .workspace {
       display: grid;
-      grid-template-columns: 260px 1fr;
+      grid-template-columns: 250px minmax(0, 1fr) 330px;
       gap: 18px;
       align-items: start;
     }
 
-    .cluster-nav {
-      position: sticky;
-      top: 92px;
+    .panel {
       border: 1px solid var(--line);
       border-radius: 22px;
-      background: rgba(255, 250, 242, 0.84);
+      background: rgba(255, 250, 242, 0.86);
       box-shadow: 0 14px 40px rgba(80, 48, 24, 0.08);
-      padding: 14px;
     }
 
-    .cluster-nav h2 {
+    .flow-panel, .summary-panel { position: sticky; top: 92px; padding: 14px; }
+    .summary-panel { display: grid; gap: 14px; }
+
+    .panel-title {
       margin: 4px 6px 12px;
-      font-size: 14px;
+      font-size: 13px;
       color: var(--muted);
       letter-spacing: 0.08em;
       text-transform: uppercase;
     }
 
-    .cluster-button {
+    .flow-button {
       width: 100%;
+      display: grid;
+      grid-template-columns: 26px 1fr auto;
+      gap: 9px;
+      align-items: center;
       margin-bottom: 7px;
-      padding: 10px 12px;
+      padding: 10px;
       border: 1px solid transparent;
-      border-radius: 12px;
+      border-radius: 14px;
       background: transparent;
       color: var(--text);
-      cursor: pointer;
       text-align: left;
-      transition: all 0.2s;
     }
 
-    .cluster-button:hover, .cluster-button.active {
-      border-color: var(--line);
-      background: var(--surface-strong);
-      color: var(--accent);
+    .flow-button:hover, .flow-button.active { border-color: var(--line); background: var(--surface-strong); color: var(--accent); }
+    .flow-button.skipped { opacity: 0.56; text-decoration: line-through; }
+    .flow-step { display: grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; background: var(--accent-soft); color: var(--accent); font-size: 12px; font-weight: 800; }
+    .flow-count { color: var(--muted); font-size: 12px; }
+
+    .skip-flow {
+      width: 100%;
+      min-height: 40px;
+      margin-top: 8px;
+      border: 1px dashed var(--line);
+      border-radius: 14px;
+      background: rgba(255, 250, 242, 0.72);
+      color: var(--muted);
+      font-weight: 800;
     }
 
-    .results-head {
+    .content-head {
       display: flex;
       justify-content: space-between;
       gap: 16px;
@@ -212,102 +217,95 @@
       margin: 4px 0 14px;
     }
 
-    .results-head h2 {
-      margin: 0;
-      font-size: 24px;
-      letter-spacing: -0.02em;
-    }
-
+    .content-head h2 { margin: 0; font-size: 24px; letter-spacing: -0.02em; }
     .count { color: var(--muted); font-size: 14px; }
-
     .cards { display: grid; gap: 12px; }
 
-    details.question-card {
+    .question-card {
       overflow: hidden;
       border: 1px solid var(--line);
       border-radius: 18px;
-      background: rgba(255, 250, 242, 0.9);
+      background: rgba(255, 250, 242, 0.92);
       box-shadow: 0 12px 34px rgba(80, 48, 24, 0.07);
     }
 
-    details.question-card[open] { background: var(--surface); }
-
-    summary {
+    .question-top {
       display: grid;
-      grid-template-columns: 1fr auto;
-      gap: 14px;
-      align-items: start;
+      grid-template-columns: auto 1fr;
+      gap: 12px;
       padding: 18px;
-      cursor: pointer;
-      list-style: none;
     }
 
-    summary::-webkit-details-marker { display: none; }
-
-    .question-title {
-      display: grid;
-      gap: 8px;
-    }
-
-    .english {
-      font-size: 18px;
-      font-weight: 800;
-      line-height: 1.42;
-      letter-spacing: -0.01em;
-    }
-
-    .chinese { color: var(--muted); }
-
-    .chevron {
-      width: 30px;
-      height: 30px;
-      display: grid;
-      place-items: center;
-      border: 1px solid var(--line);
-      border-radius: 50%;
-      color: var(--accent);
-      transition: transform 0.2s;
-    }
-
-    details[open] .chevron { transform: rotate(45deg); }
+    .asked-checkbox { width: 22px; height: 22px; margin-top: 4px; accent-color: var(--accent); }
+    .english { font-size: 18px; font-weight: 850; line-height: 1.42; letter-spacing: -0.01em; }
+    .chinese { margin-top: 6px; color: var(--muted); }
 
     .question-body {
-      border-top: 1px solid var(--line);
-      padding: 16px 18px 18px;
       display: grid;
       gap: 12px;
+      border-top: 1px solid var(--line);
+      padding: 16px 18px 18px;
     }
 
-    .meta-row {
-      display: flex;
-      flex-wrap: wrap;
+    .follow-ups {
+      display: grid;
+      gap: 8px;
+      padding: 12px;
+      border-left: 4px solid var(--accent-soft);
+      border-radius: 12px;
+      background: rgba(246, 241, 232, 0.7);
+    }
+
+    .follow-up strong, .hint strong, .field-label { color: var(--accent); }
+    .hint { color: var(--muted); font-size: 14px; }
+
+    .status-row {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
       gap: 8px;
     }
 
-    .tag {
-      display: inline-flex;
-      align-items: center;
-      min-height: 28px;
-      padding: 4px 9px;
-      border-radius: 999px;
-      background: #f1e3d3;
-      color: var(--muted);
-      font-size: 12px;
-    }
+    .status-button { min-height: 38px; color: var(--muted); font-weight: 800; }
+    .status-button.active[data-status="positive"], .status-positive { border-color: var(--green); background: rgba(88, 111, 82, 0.16); color: var(--green); }
+    .status-button.active[data-status="negative"] { border-color: var(--red); background: rgba(159, 61, 50, 0.12); color: var(--red); }
+    .status-button.active[data-status="unclear"] { border-color: var(--gold); background: rgba(169, 117, 43, 0.14); color: var(--gold); }
 
-    .copy-button {
-      justify-self: start;
+    textarea.note-input {
+      width: 100%;
+      min-height: 74px;
+      resize: vertical;
       border: 1px solid var(--line);
-      border-radius: 12px;
-      background: var(--text);
-      color: #fffaf2;
-      cursor: pointer;
-      padding: 9px 12px;
-      font-size: 13px;
-      font-weight: 700;
+      border-radius: 14px;
+      background: var(--surface);
+      color: var(--text);
+      padding: 10px 12px;
+      outline: none;
     }
 
-    .copy-button:hover { background: var(--accent); }
+    textarea.note-input:focus { border-color: var(--accent); box-shadow: 0 0 0 4px rgba(140, 79, 43, 0.12); }
+    .copy-button { justify-self: start; padding: 9px 12px; }
+
+    .summary-stats { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+    .stat { border: 1px solid var(--line); border-radius: 16px; background: var(--surface); padding: 12px; }
+    .stat-value { display: block; font-size: 24px; font-weight: 900; color: var(--accent); line-height: 1; }
+    .stat-label { color: var(--muted); font-size: 12px; }
+
+    .summary-output {
+      width: 100%;
+      min-height: 260px;
+      resize: vertical;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: #fffdf7;
+      color: var(--text);
+      padding: 12px;
+      font-family: "Consolas", "Courier New", monospace;
+      font-size: 13px;
+      line-height: 1.55;
+    }
+
+    .summary-actions { gap: 8px; }
+    .compact-button { flex: 1 1 140px; min-height: 40px; padding: 0 10px; }
 
     .empty {
       display: none;
@@ -318,7 +316,6 @@
       color: var(--muted);
       text-align: center;
     }
-
     .empty.show { display: block; }
 
     .disclaimer {
@@ -331,46 +328,16 @@
       font-size: 14px;
     }
 
-    footer {
-      margin: 36px auto 0;
-      padding: 24px 0 6px;
-      color: var(--muted);
-      text-align: center;
-      font-size: 13px;
-    }
-
-    .footer-links {
-      display: flex;
-      flex-wrap: wrap;
-      justify-content: center;
-      gap: 10px;
-      margin-bottom: 12px;
-    }
-
-    .footer-links a {
-      display: inline-flex;
-      align-items: center;
-      min-height: 38px;
-      padding: 7px 13px;
-      border: 1px solid var(--line);
-      border-radius: 999px;
-      background: var(--surface);
-      color: var(--text);
-      text-decoration: none;
-      transition: all 0.2s;
-    }
-
-    .footer-links a:hover {
-      border-color: var(--accent);
-      background: var(--accent-soft);
-      color: var(--accent);
-    }
+    footer { margin: 34px auto 0; padding: 24px 0 6px; color: var(--muted); text-align: center; font-size: 13px; }
+    .footer-links { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-bottom: 12px; }
+    .footer-links a { display: inline-flex; align-items: center; min-height: 38px; padding: 7px 13px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface); color: var(--text); text-decoration: none; transition: all 0.2s; }
+    .footer-links a:hover { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); }
 
     .toast {
       position: fixed;
       right: 18px;
       bottom: 18px;
-      z-index: 10;
+      z-index: 20;
       transform: translateY(20px);
       opacity: 0;
       border: 1px solid var(--line);
@@ -382,70 +349,99 @@
       transition: all 0.2s;
       pointer-events: none;
     }
-
     .toast.show { transform: translateY(0); opacity: 1; }
 
-    @media (max-width: 840px) {
-      .shell { width: min(100% - 24px, 720px); padding-top: 24px; }
-      .hero { padding: 26px; border-radius: 22px; }
-      .toolbar { position: static; grid-template-columns: 1fr; }
-      .layout { grid-template-columns: 1fr; }
-      .cluster-nav { position: static; }
-      .cluster-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; }
-      .cluster-button { margin: 0; }
-      .results-head { align-items: start; flex-direction: column; }
+    @media (max-width: 1120px) {
+      .workspace { grid-template-columns: 230px minmax(0, 1fr); }
+      .summary-panel { position: static; grid-column: 1 / -1; }
     }
 
-    @media (max-width: 520px) {
-      .cluster-list { grid-template-columns: 1fr; }
-      summary { grid-template-columns: 1fr; }
-      .chevron { display: none; }
+    @media (max-width: 860px) {
+      .shell { width: min(100% - 24px, 760px); padding-top: 24px; }
+      .hero { padding: 24px; border-radius: 22px; }
+      .toolbar { position: static; grid-template-columns: 1fr; }
+      .workspace { grid-template-columns: 1fr; }
+      .flow-panel { position: static; }
+      .flow-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; }
+      .flow-button { margin: 0; }
+      .content-head { align-items: start; flex-direction: column; }
+    }
+
+    @media (max-width: 560px) {
+      .flow-list, .status-row, .summary-stats { grid-template-columns: 1fr; }
+      .question-top { grid-template-columns: 1fr; }
       .english { font-size: 16px; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      * { scroll-behavior: auto !important; transition-duration: 0.01ms !important; }
     }
   </style>
 </head>
 <body>
   <main class="shell">
     <section class="hero" aria-labelledby="page-title">
-      <div class="eyebrow">Psychiatric Interview · Bilingual Question Bank</div>
-      <h1 id="page-title">精神科問診系統</h1>
-      <p class="hero-copy">依症狀與功能 cluster 整理常用英文問診句，搭配台灣臨床語氣中文對照。適合門診、住院初評、教學與英文病歷訓練快速查找。</p>
+      <div class="eyebrow">Psychiatric Interview · V2 Clinical Workspace</div>
+      <h1 id="page-title">精神科問診工作台</h1>
+      <p class="hero-copy">照流程問診、勾選已問項目、記錄病人回答，並以模板產生英文病歷摘要。所有資料只保存在本機瀏覽器，不上傳伺服器。</p>
       <div class="hero-meta" aria-label="system summary">
         <span class="pill" id="total-pill">0 questions</span>
-        <span class="pill">12 clusters</span>
+        <span class="pill" id="asked-pill">0 asked</span>
+        <span class="pill">12 flow stages</span>
         <span class="pill">GitHub Pages ready</span>
-        <span class="pill">Source: The Psychiatric Interview, 5e</span>
       </div>
     </section>
 
     <section class="toolbar" aria-label="question controls">
-      <select class="field" id="cluster-select" aria-label="Select cluster"></select>
+      <div class="mode-tabs" aria-label="Mode switcher">
+        <button class="mode-button active" id="question-bank-mode" type="button" data-mode="bank">Question Bank</button>
+        <button class="mode-button" id="interview-flow-mode" type="button" data-mode="flow">Interview Flow</button>
+        <button class="mode-button" id="summary-builder-mode" type="button" data-mode="summary">Summary Builder</button>
+      </div>
+      <select class="field" id="flow-select" aria-label="Select interview flow"></select>
       <input class="field" id="search-input" type="search" placeholder="搜尋：panic、睡眠、family history..." aria-label="Search questions" />
-      <button class="action" id="expand-all" type="button">展開全部</button>
-      <button class="action" id="collapse-all" type="button">收合全部</button>
+      <button class="action" id="generate-summary-top" type="button">Generate English Summary</button>
+      <button class="action" id="clear-filters" type="button">清除搜尋</button>
     </section>
 
-    <section class="layout">
-      <aside class="cluster-nav" aria-label="cluster navigation">
-        <h2>Clusters</h2>
-        <div class="cluster-list" id="cluster-list"></div>
+    <section class="workspace">
+      <aside class="panel flow-panel" aria-label="interview flow navigation">
+        <h2 class="panel-title">Interview Flow</h2>
+        <div class="flow-list" id="flow-list"></div>
+        <button class="skip-flow" id="skip-flow" type="button">Skip current flow</button>
       </aside>
 
       <section aria-live="polite">
-        <div class="results-head">
+        <div class="content-head">
           <div>
-            <h2 id="active-title">All Interview Questions</h2>
+            <h2 id="active-title">Question Bank</h2>
             <div class="count" id="result-count">0 results</div>
           </div>
-          <div class="count">點開卡片可看用途、標籤與複製英文問句</div>
+          <div class="count">id 為選填；每個 flow 都可跳過，跳過不會刪除筆記。</div>
         </div>
         <div class="cards" id="cards"></div>
-        <div class="empty" id="empty-state">找不到符合條件的問句。請換一個 cluster 或搜尋詞。</div>
+        <div class="empty" id="empty-state">找不到符合條件的問句。請換一個流程或搜尋詞。</div>
       </section>
+
+      <aside class="panel summary-panel" aria-label="summary builder">
+        <h2 class="panel-title">Summary Builder</h2>
+        <div class="summary-stats">
+          <div class="stat"><span class="stat-value" id="stat-asked">0</span><span class="stat-label">Asked</span></div>
+          <div class="stat"><span class="stat-value" id="stat-positive">0</span><span class="stat-label">Positive</span></div>
+          <div class="stat"><span class="stat-value" id="stat-negative">0</span><span class="stat-label">Negative</span></div>
+          <div class="stat"><span class="stat-value" id="stat-skipped">0</span><span class="stat-label">Skipped flows</span></div>
+        </div>
+        <textarea class="summary-output" id="summary-output" aria-label="Generated English Summary" placeholder="Generated English Summary will appear here."></textarea>
+        <div class="summary-actions">
+          <button class="compact-button" id="generate-summary" type="button">Generate English Summary</button>
+          <button class="compact-button" id="copy-summary" type="button">Copy Summary</button>
+          <button class="compact-button" id="clear-session" type="button">Clear Session</button>
+        </div>
+      </aside>
     </section>
 
     <section class="disclaimer">
-      本工具是問診教學與臨床溝通輔助，不取代專業判斷、診斷準則或完整病人評估。英文問句依精神科初評常用架構與來源書重點精選改寫，中譯採台灣臨床語境整理。
+      本工具是問診教學與臨床溝通輔助，不取代專業判斷、診斷準則、完整病人評估或正式病歷系統。請勿在共用電腦輸入可識別個資；本頁僅使用 localStorage 儲存在本機瀏覽器。
     </section>
 
     <footer>
@@ -458,481 +454,302 @@
     </footer>
   </main>
 
-  <div class="toast" id="toast" role="status" aria-live="polite">已複製英文問句</div>
+  <div class="toast" id="toast" role="status" aria-live="polite">已複製</div>
 
   <script>
-    const QUESTION_BANK = [
-      {
-        cluster: "Opening / Rapport",
-        type: "Function cluster",
-        purpose: "Open the interview",
-        english: "What would you like help with today?",
-        chinese: "今天你最希望我幫你處理的是什麼？",
-        tags: ["opening", "rapport", "chief complaint"]
-      },
-      {
-        cluster: "Opening / Rapport",
-        type: "Function cluster",
-        purpose: "Invite free narrative",
-        english: "Can you tell me, in your own words, what has been going on?",
-        chinese: "你可以用自己的方式說說，最近發生了什麼事嗎？",
-        tags: ["open-ended", "narrative"]
-      },
-      {
-        cluster: "Opening / Rapport",
-        type: "Function cluster",
-        purpose: "Clarify patient agenda",
-        english: "What are you most worried about right now?",
-        chinese: "你現在最擔心的是什麼？",
-        tags: ["agenda", "worry"]
-      },
-      {
-        cluster: "Opening / Rapport",
-        type: "Function cluster",
-        purpose: "Support alliance",
-        english: "That sounds very hard to carry by yourself.",
-        chinese: "聽起來這件事你一個人承受得很辛苦。",
-        tags: ["empathy", "alliance"]
-      },
-      {
-        cluster: "Chief Complaint / HPI",
-        type: "Function cluster",
-        purpose: "Establish onset",
-        english: "When did this problem first start?",
-        chinese: "這個問題最早是什麼時候開始的？",
-        tags: ["HPI", "onset"]
-      },
-      {
-        cluster: "Chief Complaint / HPI",
-        type: "Function cluster",
-        purpose: "Track course",
-        english: "Has it been getting better, worse, or staying about the same?",
-        chinese: "這段時間是變好、變糟，還是差不多？",
-        tags: ["course", "severity"]
-      },
-      {
-        cluster: "Chief Complaint / HPI",
-        type: "Function cluster",
-        purpose: "Identify precipitant",
-        english: "Was anything happening in your life around the time this began?",
-        chinese: "在這個狀況開始前後，生活中有發生什麼事嗎？",
-        tags: ["precipitant", "stressors"]
-      },
-      {
-        cluster: "Chief Complaint / HPI",
-        type: "Function cluster",
-        purpose: "Assess functioning",
-        english: "How has this affected your work, school, relationships, or daily routine?",
-        chinese: "這對你的工作、學業、人際關係或日常生活有什麼影響？",
-        tags: ["function", "impairment"]
-      },
-      {
-        cluster: "Depression / SIGECAPS",
-        type: "Symptom cluster",
-        purpose: "Screen depression",
-        english: "Have you been feeling very down or depressed for at least two weeks?",
-        chinese: "你有沒有連續至少兩週覺得很低落或憂鬱？",
-        tags: ["depression", "screening"]
-      },
-      {
-        cluster: "Depression / SIGECAPS",
-        type: "Symptom cluster",
-        purpose: "Sleep symptom",
-        english: "What has your sleep pattern been like lately?",
-        chinese: "你最近的睡眠型態大概是什麼樣子？",
-        tags: ["SIGECAPS", "sleep"]
-      },
-      {
-        cluster: "Depression / SIGECAPS",
-        type: "Symptom cluster",
-        purpose: "Anhedonia",
-        english: "Have you been able to enjoy the things you used to enjoy?",
-        chinese: "以前會讓你覺得有興趣或開心的事，最近還享受得起來嗎？",
-        tags: ["SIGECAPS", "anhedonia", "interest"]
-      },
-      {
-        cluster: "Depression / SIGECAPS",
-        type: "Symptom cluster",
-        purpose: "Guilt and worthlessness",
-        english: "How have you been feeling about yourself lately?",
-        chinese: "你最近怎麼看待自己？對自己的感覺如何？",
-        tags: ["SIGECAPS", "guilt", "self-esteem"]
-      },
-      {
-        cluster: "Panic Disorder / Panic Attack",
-        type: "Symptom cluster",
-        purpose: "Initial screening",
-        english: "Have you ever had a panic or anxiety attack?",
-        chinese: "你曾經有過恐慌發作或焦慮發作嗎？",
-        tags: ["panic", "anxiety", "screening"]
-      },
-      {
-        cluster: "Panic Disorder / Panic Attack",
-        type: "Symptom cluster",
-        purpose: "Lay definition",
-        english: "A panic attack is a sudden rush of fear and nervousness where your heart pounds, you get short of breath, and you feel you might lose control or die. Has that ever happened to you?",
-        chinese: "恐慌發作通常是突然一陣強烈害怕和緊張，心跳很快、喘不過氣，甚至覺得快失控或快死掉。你有過這種經驗嗎？",
-        tags: ["panic", "definition", "screening"]
-      },
-      {
-        cluster: "Panic Disorder / Panic Attack",
-        type: "Symptom cluster",
-        purpose: "Describe attack",
-        english: "When did you last have one of these attacks, and what was happening when it started?",
-        chinese: "你上一次這樣發作是什麼時候？開始時你正在做什麼？",
-        tags: ["panic", "episode", "trigger"]
-      },
-      {
-        cluster: "Panic Disorder / Panic Attack",
-        type: "Symptom cluster",
-        purpose: "Unexpected attacks",
-        english: "Do the attacks come out of the blue, or do you usually know what is going to trigger them?",
-        chinese: "這些發作是突然冒出來，還是你通常知道什麼情況會引發？",
-        tags: ["panic disorder", "unexpected", "trigger"]
-      },
-      {
-        cluster: "GAD / Anxiety",
-        type: "Symptom cluster",
-        purpose: "Screen excessive worry",
-        english: "Do you find yourself worrying too much about many different things?",
-        chinese: "你會不會覺得自己對很多不同事情都擔心太多？",
-        tags: ["GAD", "worry", "screening"]
-      },
-      {
-        cluster: "GAD / Anxiety",
-        type: "Symptom cluster",
-        purpose: "Control of worry",
-        english: "When the worry starts, is it hard for you to control or stop it?",
-        chinese: "擔心一開始之後，你會不會很難控制或停下來？",
-        tags: ["GAD", "control"]
-      },
-      {
-        cluster: "GAD / Anxiety",
-        type: "Symptom cluster",
-        purpose: "Physical tension",
-        english: "Do you notice muscle tension, restlessness, or feeling keyed up?",
-        chinese: "你會不會覺得肌肉緊繃、坐立不安，或整個人一直繃著？",
-        tags: ["GAD", "tension", "restlessness"]
-      },
-      {
-        cluster: "GAD / Anxiety",
-        type: "Symptom cluster",
-        purpose: "Anxiety impairment",
-        english: "How much does the anxiety interfere with your daily life?",
-        chinese: "焦慮對你的日常生活影響到什麼程度？",
-        tags: ["anxiety", "function"]
-      },
-      {
-        cluster: "Mania / Hypomania",
-        type: "Symptom cluster",
-        purpose: "Screen elevated mood",
-        english: "Have you ever had a period when you felt unusually high, energetic, or irritable, and other people noticed you were not yourself?",
-        chinese: "你有沒有一段時間特別亢奮、精力旺盛或易怒，而且別人也覺得你和平常不太一樣？",
-        tags: ["mania", "hypomania", "screening"]
-      },
-      {
-        cluster: "Mania / Hypomania",
-        type: "Symptom cluster",
-        purpose: "Decreased need for sleep",
-        english: "During that period, did you need much less sleep but still feel full of energy?",
-        chinese: "那段時間你是不是睡得明顯比較少，卻還是覺得很有精神？",
-        tags: ["DIGFAST", "sleep"]
-      },
-      {
-        cluster: "Mania / Hypomania",
-        type: "Symptom cluster",
-        purpose: "Risky behavior",
-        english: "Did you do things that were unusually risky or out of character for you?",
-        chinese: "你那段時間有沒有做一些比平常更冒險、或不像你平常會做的事？",
-        tags: ["DIGFAST", "risk", "indiscretion"]
-      },
-      {
-        cluster: "Mania / Hypomania",
-        type: "Symptom cluster",
-        purpose: "Speech and thoughts",
-        english: "Were your thoughts racing, or were you talking much more than usual?",
-        chinese: "那段時間你的想法會不會跑很快，或講話比平常多很多？",
-        tags: ["DIGFAST", "racing thoughts", "talkativeness"]
-      },
-      {
-        cluster: "Psychosis",
-        type: "Symptom cluster",
-        purpose: "General psychosis screen",
-        english: "Have you had experiences that other people found hard to believe or understand?",
-        chinese: "你有沒有一些經驗，是別人覺得很難相信或很難理解的？",
-        tags: ["psychosis", "screening"]
-      },
-      {
-        cluster: "Psychosis",
-        type: "Symptom cluster",
-        purpose: "Paranoia",
-        english: "Have you felt that people were trying to harm you, follow you, or plot against you?",
-        chinese: "你有沒有覺得有人想傷害你、跟蹤你，或在設計你？",
-        tags: ["delusion", "paranoia"]
-      },
-      {
-        cluster: "Psychosis",
-        type: "Symptom cluster",
-        purpose: "Auditory hallucination",
-        english: "Have you ever heard voices when no one else was around?",
-        chinese: "你有沒有在旁邊沒有人時，聽到有人說話的聲音？",
-        tags: ["hallucination", "voices"]
-      },
-      {
-        cluster: "Psychosis",
-        type: "Symptom cluster",
-        purpose: "Reality testing",
-        english: "How do you make sense of that experience?",
-        chinese: "你自己怎麼理解這個經驗？",
-        tags: ["reality testing", "formulation"]
-      },
-      {
-        cluster: "Suicide / Homicide Risk",
-        type: "Safety cluster",
-        purpose: "Passive death wish",
-        english: "Have things ever felt so bad that you wished you would not wake up?",
-        chinese: "你有沒有曾經痛苦到希望自己不要醒來？",
-        tags: ["suicide", "passive ideation"]
-      },
-      {
-        cluster: "Suicide / Homicide Risk",
-        type: "Safety cluster",
-        purpose: "Active suicidal ideation",
-        english: "Have you had thoughts of killing yourself?",
-        chinese: "你有沒有想過要結束自己的生命？",
-        tags: ["suicide", "active ideation"]
-      },
-      {
-        cluster: "Suicide / Homicide Risk",
-        type: "Safety cluster",
-        purpose: "Plan and intent",
-        english: "Have you thought about how you would do it, or made any preparations?",
-        chinese: "你有沒有想過會用什麼方式，或已經做了什麼準備？",
-        tags: ["suicide", "plan", "intent"]
-      },
-      {
-        cluster: "Suicide / Homicide Risk",
-        type: "Safety cluster",
-        purpose: "Violence risk",
-        english: "Have you had thoughts of seriously hurting someone else?",
-        chinese: "你有沒有想過要嚴重傷害別人？",
-        tags: ["homicide", "violence", "risk"]
-      },
-      {
-        cluster: "Substance Use",
-        type: "Function cluster",
-        purpose: "Normalize substance questions",
-        english: "I ask everyone these questions because alcohol and drugs can affect mood, sleep, and anxiety.",
-        chinese: "我會問每個人這些問題，因為酒精和藥物會影響情緒、睡眠和焦慮。",
-        tags: ["substance", "normalization"]
-      },
-      {
-        cluster: "Substance Use",
-        type: "Symptom cluster",
-        purpose: "Alcohol pattern",
-        english: "How often do you drink alcohol, and how much do you usually drink?",
-        chinese: "你喝酒的頻率如何？通常一次大概喝多少？",
-        tags: ["alcohol", "quantity", "frequency"]
-      },
-      {
-        cluster: "Substance Use",
-        type: "Symptom cluster",
-        purpose: "Loss of control",
-        english: "Have you found it hard to cut down or stop once you start?",
-        chinese: "你有沒有發現一開始使用後，就很難減量或停下來？",
-        tags: ["substance use disorder", "control"]
-      },
-      {
-        cluster: "Substance Use",
-        type: "Symptom cluster",
-        purpose: "Consequences",
-        english: "Has alcohol or drug use caused problems with your health, work, relationships, or safety?",
-        chinese: "酒精或藥物使用有沒有造成健康、工作、人際關係或安全上的問題？",
-        tags: ["consequences", "function"]
-      },
-      {
-        cluster: "Family Psychiatric History",
-        type: "Function cluster",
-        purpose: "Psychiatric family history",
-        english: "Has any blood relative ever had depression, mania, psychosis, schizophrenia, alcohol or drug problems, suicide attempts, or psychiatric hospitalization?",
-        chinese: "你的血親裡，有沒有人曾經有憂鬱、躁症、精神病、思覺失調、酒藥癮、自殺企圖，或因精神狀況住院？",
-        tags: ["family history", "psychiatric"]
-      },
-      {
-        cluster: "Family Psychiatric History",
-        type: "Function cluster",
-        purpose: "Define blood relative",
-        english: "By blood relative, I mean parents, siblings, children, aunts, uncles, grandparents, and cousins.",
-        chinese: "血親指的是父母、手足、子女、叔伯阿姨、祖父母和表堂兄弟姊妹。",
-        tags: ["family history", "definition"]
-      },
-      {
-        cluster: "Family Psychiatric History",
-        type: "Function cluster",
-        purpose: "Medical family history",
-        english: "Has any blood relative had major medical or neurologic illness, such as heart disease, diabetes, cancer, seizures, or dementia?",
-        chinese: "你的血親裡，有沒有人有重大身體或神經疾病，例如心臟病、糖尿病、癌症、癲癇或失智症？",
-        tags: ["family history", "medical", "neurologic"]
-      },
-      {
-        cluster: "Family Psychiatric History",
-        type: "Function cluster",
-        purpose: "Clarify diagnosis",
-        english: "Do you know what treatment or medication that relative received?",
-        chinese: "你知道那位家人當時接受過什麼治療或吃過什麼藥嗎？",
-        tags: ["family history", "treatment clues"]
-      },
-      {
-        cluster: "Social / Developmental History",
-        type: "Function cluster",
-        purpose: "Broad background",
-        english: "Can you tell me a bit about your background, where you grew up, and how you grew up?",
-        chinese: "你可以簡單說說你的成長背景、在哪裡長大、成長過程大概如何嗎？",
-        tags: ["social history", "development"]
-      },
-      {
-        cluster: "Social / Developmental History",
-        type: "Function cluster",
-        purpose: "School and peer history",
-        english: "What was school like for you, especially friendships and getting along with others?",
-        chinese: "你以前上學的經驗如何？特別是交朋友和跟別人相處方面。",
-        tags: ["school", "peer relationships"]
-      },
-      {
-        cluster: "Social / Developmental History",
-        type: "Function cluster",
-        purpose: "Work and role function",
-        english: "What kind of work or daily roles have you had, and how have they been going recently?",
-        chinese: "你目前或過去主要的工作、角色或日常責任是什麼？最近狀況如何？",
-        tags: ["work", "function"]
-      },
-      {
-        cluster: "Social / Developmental History",
-        type: "Function cluster",
-        purpose: "Support network",
-        english: "Who are the people you can rely on when you are having a hard time?",
-        chinese: "當你遇到困難時，有哪些人是你可以依靠的？",
-        tags: ["support", "relationships"]
-      },
-      {
-        cluster: "Mental Status Exam",
-        type: "Function cluster",
-        purpose: "Mood",
-        english: "How would you describe your mood today?",
-        chinese: "你會怎麼形容今天自己的心情？",
-        tags: ["MSE", "mood"]
-      },
-      {
-        cluster: "Mental Status Exam",
-        type: "Function cluster",
-        purpose: "Affect observation",
-        english: "As we talk, I notice your emotions seem to shift. Does that feel accurate to you?",
-        chinese: "我們談話時，我注意到你的情緒似乎有些變化。這和你的感覺接近嗎？",
-        tags: ["MSE", "affect"]
-      },
-      {
-        cluster: "Mental Status Exam",
-        type: "Function cluster",
-        purpose: "Attention and concentration",
-        english: "Have you noticed any change in your attention or concentration?",
-        chinese: "你有沒有注意到自己的注意力或專注力有改變？",
-        tags: ["MSE", "attention", "concentration"]
-      },
-      {
-        cluster: "Mental Status Exam",
-        type: "Function cluster",
-        purpose: "Insight",
-        english: "What do you think is causing these difficulties?",
-        chinese: "你覺得這些困難可能是什麼原因造成的？",
-        tags: ["MSE", "insight"]
-      }
+    const STORAGE_KEY = "psychiatric-interview-v2-session";
+    const ALL = "All flows";
+
+    const FLOWS = [
+      "Opening / Agenda",
+      "Chief Complaint / HPI",
+      "Safety Risk",
+      "Mood Symptoms",
+      "Anxiety / Panic",
+      "Mania / Hypomania",
+      "Psychosis",
+      "Substance Use",
+      "Family History",
+      "Social / Developmental History",
+      "Mental Status Exam",
+      "Review / Summary"
     ];
 
-    const ALL = "All clusters";
-    const clusterSelect = document.querySelector("#cluster-select");
-    const clusterList = document.querySelector("#cluster-list");
-    const searchInput = document.querySelector("#search-input");
-    const cards = document.querySelector("#cards");
-    const resultCount = document.querySelector("#result-count");
-    const activeTitle = document.querySelector("#active-title");
-    const emptyState = document.querySelector("#empty-state");
-    const totalPill = document.querySelector("#total-pill");
-    const toast = document.querySelector("#toast");
+    const QUESTION_BANK = [
+      { id: "open-001", flow: "Opening / Agenda", cluster: "Opening / Rapport", type: "Function cluster", purpose: "Open the interview", english: "What would you like help with today?", chinese: "今天你最希望我幫你處理的是什麼？", followUps: [{ english: "What made you decide to come in now?", chinese: "是什麼讓你現在決定來就診？" }], clinicalHint: "Start broad and let the patient set the agenda before narrowing the interview.", summaryKey: "chief_concern", tags: ["opening", "agenda"] },
+      { id: "open-002", flow: "Opening / Agenda", cluster: "Opening / Rapport", type: "Function cluster", purpose: "Invite narrative", english: "Can you tell me, in your own words, what has been going on?", chinese: "你可以用自己的方式說說，最近發生了什麼事嗎？", followUps: [{ english: "Where would you like to start?", chinese: "你想從哪裡開始說？" }], clinicalHint: "Use this before symptom checklists to preserve rapport.", summaryKey: "narrative", tags: ["open-ended"] },
+      { id: "open-003", flow: "Opening / Agenda", cluster: "Opening / Rapport", type: "Function cluster", purpose: "Assess concern", english: "What are you most worried about right now?", chinese: "你現在最擔心的是什麼？", followUps: [{ english: "What would feel like a useful outcome from today's visit?", chinese: "如果今天談完對你有幫助，你希望得到什麼？" }], clinicalHint: "This identifies the patient's priority and expectation.", summaryKey: "patient_worry", tags: ["worry", "agenda"] },
+      { id: "open-004", flow: "Opening / Agenda", cluster: "Opening / Rapport", type: "Function cluster", purpose: "Empathic reflection", english: "That sounds very hard to carry by yourself.", chinese: "聽起來這件事你一個人承受得很辛苦。", followUps: [{ english: "How have you been managing day to day?", chinese: "你這段時間每天是怎麼撐過來的？" }], clinicalHint: "Use empathic statements sparingly and specifically.", summaryKey: "coping", tags: ["empathy"] },
 
-    let activeCluster = ALL;
+      { id: "hpi-001", flow: "Chief Complaint / HPI", cluster: "Chief Complaint / HPI", type: "Function cluster", purpose: "Onset", english: "When did this problem first start?", chinese: "這個問題最早是什麼時候開始的？", followUps: [{ english: "Was the onset sudden or gradual?", chinese: "開始是突然發生，還是慢慢出現？" }], clinicalHint: "Onset and tempo help distinguish episodic, chronic, and adjustment-related conditions.", summaryKey: "hpi_onset", tags: ["onset"] },
+      { id: "hpi-002", flow: "Chief Complaint / HPI", cluster: "Chief Complaint / HPI", type: "Function cluster", purpose: "Course", english: "Has it been getting better, worse, or staying about the same?", chinese: "這段時間是變好、變糟，還是差不多？", followUps: [{ english: "Are there good days and bad days?", chinese: "會有比較好和比較糟的日子嗎？" }], clinicalHint: "Course anchors the current episode and guides risk assessment.", summaryKey: "hpi_course", tags: ["course"] },
+      { id: "hpi-003", flow: "Chief Complaint / HPI", cluster: "Chief Complaint / HPI", type: "Function cluster", purpose: "Precipitant", english: "Was anything happening in your life around the time this began?", chinese: "在這個狀況開始前後，生活中有發生什麼事嗎？", followUps: [{ english: "Any changes in work, relationships, sleep, substances, or health?", chinese: "工作、人際、睡眠、物質使用或健康有改變嗎？" }], clinicalHint: "Look for stressors without over-attributing symptoms to stress alone.", summaryKey: "precipitants", tags: ["stressors"] },
+      { id: "hpi-004", flow: "Chief Complaint / HPI", cluster: "Chief Complaint / HPI", type: "Function cluster", purpose: "Function", english: "How has this affected your work, school, relationships, or daily routine?", chinese: "這對你的工作、學業、人際關係或日常生活有什麼影響？", followUps: [{ english: "What have you stopped doing because of this?", chinese: "因為這個狀況，你有哪些事不做了？" }], clinicalHint: "Functional impairment is often more clinically useful than symptom count alone.", summaryKey: "function", tags: ["impairment"] },
 
-    const clusters = [ALL, ...new Set(QUESTION_BANK.map((item) => item.cluster))];
+      { id: "risk-001", flow: "Safety Risk", cluster: "Suicide / Homicide Risk", type: "Safety cluster", purpose: "Passive death wish", english: "Have things ever felt so bad that you wished you would not wake up?", chinese: "你有沒有曾經痛苦到希望自己不要醒來？", followUps: [{ english: "How often has that thought been coming up?", chinese: "這樣的念頭最近多常出現？" }], clinicalHint: "Passive death wishes can precede active suicidal ideation.", summaryKey: "passive_si", tags: ["suicide"] },
+      { id: "risk-002", flow: "Safety Risk", cluster: "Suicide / Homicide Risk", type: "Safety cluster", purpose: "Active suicidal ideation", english: "Have you had thoughts of killing yourself?", chinese: "你有沒有想過要結束自己的生命？", followUps: [{ english: "Do you feel you might act on those thoughts?", chinese: "你覺得自己有可能照著那些念頭行動嗎？" }], clinicalHint: "Ask directly; direct questions do not implant suicidality.", summaryKey: "active_si", tags: ["suicide", "intent"] },
+      { id: "risk-003", flow: "Safety Risk", cluster: "Suicide / Homicide Risk", type: "Safety cluster", purpose: "Plan", english: "Have you thought about how you would do it, or made any preparations?", chinese: "你有沒有想過會用什麼方式，或已經做了什麼準備？", followUps: [{ english: "Do you have access to that method now?", chinese: "你現在取得那個方式容易嗎？" }], clinicalHint: "Plan, intent, preparation, and access determine urgency.", summaryKey: "suicide_plan", tags: ["plan", "preparation"] },
+      { id: "risk-004", flow: "Safety Risk", cluster: "Suicide / Homicide Risk", type: "Safety cluster", purpose: "Violence risk", english: "Have you had thoughts of seriously hurting someone else?", chinese: "你有沒有想過要嚴重傷害別人？", followUps: [{ english: "Is there a specific person you are worried you might hurt?", chinese: "有沒有特定對象是你擔心自己可能會傷害的？" }], clinicalHint: "Clarify target, intent, access, psychosis, intoxication, and protective factors.", summaryKey: "violence_risk", tags: ["homicide", "violence"] },
+
+      { id: "mood-001", flow: "Mood Symptoms", cluster: "Depression / SIGECAPS", type: "Symptom cluster", purpose: "Depressed mood", english: "Have you been feeling very down or depressed for at least two weeks?", chinese: "你有沒有連續至少兩週覺得很低落或憂鬱？", followUps: [{ english: "Is it present most of the day nearly every day?", chinese: "是不是幾乎每天大部分時間都如此？" }], clinicalHint: "Anchor duration and persistence before counting associated symptoms.", summaryKey: "depressed_mood", tags: ["depression"] },
+      { id: "mood-002", flow: "Mood Symptoms", cluster: "Depression / SIGECAPS", type: "Symptom cluster", purpose: "Sleep", english: "What has your sleep pattern been like lately?", chinese: "你最近的睡眠型態大概是什麼樣子？", followUps: [{ english: "Do you have trouble falling asleep, staying asleep, or waking early?", chinese: "是入睡困難、容易醒，還是太早醒？" }], clinicalHint: "Compare to baseline; chronic sleep pattern may not indicate current depression.", summaryKey: "sleep", tags: ["sleep"] },
+      { id: "mood-003", flow: "Mood Symptoms", cluster: "Depression / SIGECAPS", type: "Symptom cluster", purpose: "Anhedonia", english: "Have you been able to enjoy the things you used to enjoy?", chinese: "以前會讓你覺得有興趣或開心的事，最近還享受得起來嗎？", followUps: [{ english: "What activities have you stopped doing?", chinese: "有哪些活動你最近停掉了？" }], clinicalHint: "Ask about specific activities rather than using the word anhedonia.", summaryKey: "anhedonia", tags: ["interest"] },
+      { id: "mood-004", flow: "Mood Symptoms", cluster: "Depression / SIGECAPS", type: "Symptom cluster", purpose: "Self-worth", english: "How have you been feeling about yourself lately?", chinese: "你最近怎麼看待自己？對自己的感覺如何？", followUps: [{ english: "Have you been feeling worthless, guilty, or hopeless?", chinese: "你會覺得自己沒價值、有罪惡感，或沒有希望嗎？" }], clinicalHint: "Worthlessness and hopelessness increase risk and severity.", summaryKey: "self_worth", tags: ["guilt", "hopelessness"] },
+
+      { id: "anx-001", flow: "Anxiety / Panic", cluster: "Panic Disorder / Panic Attack", type: "Symptom cluster", purpose: "Panic screen", english: "Have you ever had a panic or anxiety attack?", chinese: "你曾經有過恐慌發作或焦慮發作嗎？", followUps: [{ english: "What were you doing when it started?", chinese: "發作開始時你正在做什麼？" }], clinicalHint: "Clarify whether the patient means true panic or severe worry.", summaryKey: "panic_attacks", tags: ["panic"] },
+      { id: "anx-002", flow: "Anxiety / Panic", cluster: "Panic Disorder / Panic Attack", type: "Symptom cluster", purpose: "Panic definition", english: "A panic attack is a sudden rush of fear and nervousness where your heart pounds, you get short of breath, and you feel you might lose control or die. Has that ever happened to you?", chinese: "恐慌發作通常是突然一陣強烈害怕和緊張，心跳很快、喘不過氣，甚至覺得快失控或快死掉。你有過這種經驗嗎？", followUps: [{ english: "How long does the peak usually last?", chinese: "最強烈的感覺通常持續多久？" }], clinicalHint: "A concrete lay definition improves specificity.", summaryKey: "panic_definition", tags: ["panic", "definition"] },
+      { id: "anx-003", flow: "Anxiety / Panic", cluster: "Panic Disorder / Panic Attack", type: "Symptom cluster", purpose: "Unexpectedness", english: "Do the attacks come out of the blue, or do you usually know what is going to trigger them?", chinese: "這些發作是突然冒出來，還是你通常知道什麼情況會引發？", followUps: [{ english: "Have they ever woken you from sleep?", chinese: "有沒有曾經在睡覺時把你嚇醒？" }], clinicalHint: "Unexpected attacks support panic disorder; triggered attacks suggest phobia, PTSD, or social anxiety.", summaryKey: "unexpected_panic", tags: ["trigger"] },
+      { id: "anx-004", flow: "Anxiety / Panic", cluster: "GAD / Anxiety", type: "Symptom cluster", purpose: "Excessive worry", english: "Do you find yourself worrying too much about many different things?", chinese: "你會不會覺得自己對很多不同事情都擔心太多？", followUps: [{ english: "Is it hard to control the worry once it starts?", chinese: "擔心一開始之後會很難停下來嗎？" }], clinicalHint: "GAD worry is broad, persistent, and difficult to control.", summaryKey: "excessive_worry", tags: ["GAD", "worry"] },
+
+      { id: "mania-001", flow: "Mania / Hypomania", cluster: "Mania / Hypomania", type: "Symptom cluster", purpose: "Mania screen", english: "Have you ever had a period when you felt unusually high, energetic, or irritable, and other people noticed you were not yourself?", chinese: "你有沒有一段時間特別亢奮、精力旺盛或易怒，而且別人也覺得你和平常不太一樣？", followUps: [{ english: "How long did that period last?", chinese: "那段時間持續多久？" }], clinicalHint: "Collateral observations improve specificity for mania and hypomania.", summaryKey: "mania_screen", tags: ["mania"] },
+      { id: "mania-002", flow: "Mania / Hypomania", cluster: "Mania / Hypomania", type: "Symptom cluster", purpose: "Sleep deficit", english: "During that period, did you need much less sleep but still feel full of energy?", chinese: "那段時間你是不是睡得明顯比較少，卻還是覺得很有精神？", followUps: [{ english: "How many hours were you sleeping?", chinese: "那時候一天大概睡幾小時？" }], clinicalHint: "Decreased need for sleep differs from insomnia with fatigue.", summaryKey: "decreased_sleep_need", tags: ["DIGFAST"] },
+      { id: "mania-003", flow: "Mania / Hypomania", cluster: "Mania / Hypomania", type: "Symptom cluster", purpose: "Risky behavior", english: "Did you do things that were unusually risky or out of character for you?", chinese: "你那段時間有沒有做一些比平常更冒險、或不像你平常會做的事？", followUps: [{ english: "Any spending, sexual behavior, driving, substances, or conflicts?", chinese: "有沒有花錢、性行為、開車、物質使用或衝突變多？" }], clinicalHint: "Behavioral change is often more reliable than subjective euphoria.", summaryKey: "mania_risk", tags: ["risk"] },
+      { id: "mania-004", flow: "Mania / Hypomania", cluster: "Mania / Hypomania", type: "Symptom cluster", purpose: "Speech and thoughts", english: "Were your thoughts racing, or were you talking much more than usual?", chinese: "那段時間你的想法會不會跑很快，或講話比平常多很多？", followUps: [{ english: "Did others have trouble interrupting you?", chinese: "別人會不會覺得很難打斷你？" }], clinicalHint: "Assess both internal racing thoughts and observable pressured speech.", summaryKey: "racing_thoughts", tags: ["speech"] },
+
+      { id: "psych-001", flow: "Psychosis", cluster: "Psychosis", type: "Symptom cluster", purpose: "General screen", english: "Have you had experiences that other people found hard to believe or understand?", chinese: "你有沒有一些經驗，是別人覺得很難相信或很難理解的？", followUps: [{ english: "Can you give me an example?", chinese: "你可以舉一個例子嗎？" }], clinicalHint: "Begin nonjudgmentally before asking direct delusion questions.", summaryKey: "psychosis_screen", tags: ["psychosis"] },
+      { id: "psych-002", flow: "Psychosis", cluster: "Psychosis", type: "Symptom cluster", purpose: "Paranoia", english: "Have you felt that people were trying to harm you, follow you, or plot against you?", chinese: "你有沒有覺得有人想傷害你、跟蹤你，或在設計你？", followUps: [{ english: "How certain are you that this is happening?", chinese: "你有多確定這件事正在發生？" }], clinicalHint: "Assess conviction, evidence, cultural context, and safety implications.", summaryKey: "paranoia", tags: ["delusion"] },
+      { id: "psych-003", flow: "Psychosis", cluster: "Psychosis", type: "Symptom cluster", purpose: "Hallucination", english: "Have you ever heard voices when no one else was around?", chinese: "你有沒有在旁邊沒有人時，聽到有人說話的聲音？", followUps: [{ english: "Do the voices comment, talk to each other, or tell you to do things?", chinese: "那些聲音會評論你、彼此對話，或叫你做事嗎？" }], clinicalHint: "Command hallucinations require risk clarification.", summaryKey: "hallucinations", tags: ["voices"] },
+      { id: "psych-004", flow: "Psychosis", cluster: "Psychosis", type: "Symptom cluster", purpose: "Reality testing", english: "How do you make sense of that experience?", chinese: "你自己怎麼理解這個經驗？", followUps: [{ english: "Is there any other possible explanation?", chinese: "有沒有其他可能的解釋？" }], clinicalHint: "Reality testing helps distinguish overvalued ideas from fixed delusions.", summaryKey: "reality_testing", tags: ["insight"] },
+
+      { id: "sub-001", flow: "Substance Use", cluster: "Substance Use", type: "Function cluster", purpose: "Normalize", english: "I ask everyone these questions because alcohol and drugs can affect mood, sleep, and anxiety.", chinese: "我會問每個人這些問題，因為酒精和藥物會影響情緒、睡眠和焦慮。", followUps: [{ english: "Is it okay if I ask about alcohol and drug use?", chinese: "我可以問一下酒精和藥物使用的狀況嗎？" }], clinicalHint: "Normalization reduces shame and improves disclosure.", summaryKey: "substance_intro", tags: ["normalization"] },
+      { id: "sub-002", flow: "Substance Use", cluster: "Substance Use", type: "Symptom cluster", purpose: "Alcohol pattern", english: "How often do you drink alcohol, and how much do you usually drink?", chinese: "你喝酒的頻率如何？通常一次大概喝多少？", followUps: [{ english: "What is the most you drink in one day?", chinese: "一天最多大概會喝多少？" }], clinicalHint: "Quantify frequency, amount, binge pattern, and last use.", summaryKey: "alcohol_use", tags: ["alcohol"] },
+      { id: "sub-003", flow: "Substance Use", cluster: "Substance Use", type: "Symptom cluster", purpose: "Control", english: "Have you found it hard to cut down or stop once you start?", chinese: "你有沒有發現一開始使用後，就很難減量或停下來？", followUps: [{ english: "Have you tried to cut down before?", chinese: "你以前有試著減量或停止過嗎？" }], clinicalHint: "Loss of control and failed attempts to cut down support substance use disorder.", summaryKey: "substance_control", tags: ["control"] },
+      { id: "sub-004", flow: "Substance Use", cluster: "Substance Use", type: "Symptom cluster", purpose: "Consequences", english: "Has alcohol or drug use caused problems with your health, work, relationships, or safety?", chinese: "酒精或藥物使用有沒有造成健康、工作、人際關係或安全上的問題？", followUps: [{ english: "Has anyone expressed concern about your use?", chinese: "有沒有人擔心過你的使用狀況？" }], clinicalHint: "Functional consequences determine clinical severity.", summaryKey: "substance_consequences", tags: ["consequences"] },
+
+      { id: "fh-001", flow: "Family History", cluster: "Family Psychiatric History", type: "Function cluster", purpose: "Psychiatric family history", english: "Has any blood relative ever had depression, mania, psychosis, schizophrenia, alcohol or drug problems, suicide attempts, or psychiatric hospitalization?", chinese: "你的血親裡，有沒有人曾經有憂鬱、躁症、精神病、思覺失調、酒藥癮、自殺企圖，或因精神狀況住院？", followUps: [{ english: "Which relative was that, and what happened?", chinese: "是哪位親人？當時發生什麼事？" }], clinicalHint: "Family history changes diagnostic probability, especially bipolar and psychotic disorders.", summaryKey: "family_psych", tags: ["family"] },
+      { id: "fh-002", flow: "Family History", cluster: "Family Psychiatric History", type: "Function cluster", purpose: "Define blood relative", english: "By blood relative, I mean parents, siblings, children, aunts, uncles, grandparents, and cousins.", chinese: "血親指的是父母、手足、子女、叔伯阿姨、祖父母和表堂兄弟姊妹。", followUps: [{ english: "Does anyone in that group come to mind?", chinese: "這些親人裡，有沒有人讓你想到？" }], clinicalHint: "Clarify blood relatives because family psychiatric risk is inherited.", summaryKey: "blood_relative_definition", tags: ["definition"] },
+      { id: "fh-003", flow: "Family History", cluster: "Family Psychiatric History", type: "Function cluster", purpose: "Medical family history", english: "Has any blood relative had major medical or neurologic illness, such as heart disease, diabetes, cancer, seizures, or dementia?", chinese: "你的血親裡，有沒有人有重大身體或神經疾病，例如心臟病、糖尿病、癌症、癲癇或失智症？", followUps: [{ english: "At what age did it begin?", chinese: "大概幾歲開始的？" }], clinicalHint: "Neurologic and medical family history may influence differential diagnosis.", summaryKey: "family_medical", tags: ["medical"] },
+      { id: "fh-004", flow: "Family History", cluster: "Family Psychiatric History", type: "Function cluster", purpose: "Treatment clue", english: "Do you know what treatment or medication that relative received?", chinese: "你知道那位家人當時接受過什麼治療或吃過什麼藥嗎？", followUps: [{ english: "Was there hospitalization, ECT, lithium, antipsychotics, or antidepressants?", chinese: "有沒有住院、電療、鋰鹽、抗精神病藥或抗憂鬱藥？" }], clinicalHint: "Treatment history can clarify unclear family diagnoses.", summaryKey: "family_treatment", tags: ["treatment"] },
+
+      { id: "soc-001", flow: "Social / Developmental History", cluster: "Social / Developmental History", type: "Function cluster", purpose: "Background", english: "Can you tell me a bit about your background, where you grew up, and how you grew up?", chinese: "你可以簡單說說你的成長背景、在哪裡長大、成長過程大概如何嗎？", followUps: [{ english: "Who raised you when you were growing up?", chinese: "你小時候主要是誰照顧你長大？" }], clinicalHint: "Use this to transition into developmental and relational context.", summaryKey: "developmental_background", tags: ["background"] },
+      { id: "soc-002", flow: "Social / Developmental History", cluster: "Social / Developmental History", type: "Function cluster", purpose: "School and peers", english: "What was school like for you, especially friendships and getting along with others?", chinese: "你以前上學的經驗如何？特別是交朋友和跟別人相處方面。", followUps: [{ english: "Any bullying, learning difficulties, or attention problems?", chinese: "有沒有被霸凌、學習困難或注意力問題？" }], clinicalHint: "School history can reveal ADHD, autism traits, trauma, and social anxiety.", summaryKey: "school_history", tags: ["school"] },
+      { id: "soc-003", flow: "Social / Developmental History", cluster: "Social / Developmental History", type: "Function cluster", purpose: "Work and roles", english: "What kind of work or daily roles have you had, and how have they been going recently?", chinese: "你目前或過去主要的工作、角色或日常責任是什麼？最近狀況如何？", followUps: [{ english: "Have symptoms affected attendance or performance?", chinese: "症狀有影響出勤或表現嗎？" }], clinicalHint: "Role function gives a practical severity marker.", summaryKey: "work_roles", tags: ["work"] },
+      { id: "soc-004", flow: "Social / Developmental History", cluster: "Social / Developmental History", type: "Function cluster", purpose: "Support", english: "Who are the people you can rely on when you are having a hard time?", chinese: "當你遇到困難時，有哪些人是你可以依靠的？", followUps: [{ english: "Who knows what you are going through right now?", chinese: "現在有誰知道你正在經歷這些事？" }], clinicalHint: "Support network affects safety planning and treatment feasibility.", summaryKey: "support", tags: ["support"] },
+
+      { id: "mse-001", flow: "Mental Status Exam", cluster: "Mental Status Exam", type: "Function cluster", purpose: "Mood", english: "How would you describe your mood today?", chinese: "你會怎麼形容今天自己的心情？", followUps: [{ english: "Is that different from your usual mood?", chinese: "這和平常的心情有不一樣嗎？" }], clinicalHint: "Document stated mood and observed affect separately.", summaryKey: "mse_mood", tags: ["MSE"] },
+      { id: "mse-002", flow: "Mental Status Exam", cluster: "Mental Status Exam", type: "Function cluster", purpose: "Affect", english: "As we talk, I notice your emotions seem to shift. Does that feel accurate to you?", chinese: "我們談話時，我注意到你的情緒似乎有些變化。這和你的感覺接近嗎？", followUps: [{ english: "Do others notice these shifts too?", chinese: "別人也會注意到這些變化嗎？" }], clinicalHint: "This bridges observation and patient report without sounding accusatory.", summaryKey: "mse_affect", tags: ["affect"] },
+      { id: "mse-003", flow: "Mental Status Exam", cluster: "Mental Status Exam", type: "Function cluster", purpose: "Attention", english: "Have you noticed any change in your attention or concentration?", chinese: "你有沒有注意到自己的注意力或專注力有改變？", followUps: [{ english: "Can you read, watch a show, or finish tasks as usual?", chinese: "你還能像平常一樣閱讀、看節目或完成事情嗎？" }], clinicalHint: "Attention complaints can reflect mood, anxiety, ADHD, sleep, substances, or cognitive disorder.", summaryKey: "mse_attention", tags: ["attention"] },
+      { id: "mse-004", flow: "Mental Status Exam", cluster: "Mental Status Exam", type: "Function cluster", purpose: "Insight", english: "What do you think is causing these difficulties?", chinese: "你覺得這些困難可能是什麼原因造成的？", followUps: [{ english: "What kind of help do you think would be useful?", chinese: "你覺得什麼樣的幫助可能有用？" }], clinicalHint: "Insight guides psychoeducation, adherence, and shared planning.", summaryKey: "mse_insight", tags: ["insight"] },
+
+      { id: "rev-001", flow: "Review / Summary", cluster: "Review / Summary", type: "Function cluster", purpose: "Check missed topics", english: "Is there anything important that I have not asked about yet?", chinese: "有沒有什麼重要的事情，是我還沒有問到的？", followUps: [{ english: "What should I make sure I understand before we finish?", chinese: "結束前，有什麼是你希望我一定要理解的？" }], clinicalHint: "A final open question catches missed priorities and repairs alliance.", summaryKey: "missed_topics", tags: ["review"] },
+      { id: "rev-002", flow: "Review / Summary", cluster: "Review / Summary", type: "Function cluster", purpose: "Reflect formulation", english: "Let me summarize what I have heard, and you can tell me if I missed anything.", chinese: "我先整理一下我聽到的內容，你再告訴我有沒有漏掉什麼。", followUps: [{ english: "Does this summary sound accurate to you?", chinese: "這樣的整理跟你的感覺接近嗎？" }], clinicalHint: "Collaborative summaries improve accuracy and alliance.", summaryKey: "collaborative_summary", tags: ["summary"] },
+      { id: "rev-003", flow: "Review / Summary", cluster: "Review / Summary", type: "Function cluster", purpose: "Next steps", english: "What feels like the most important next step from here?", chinese: "接下來你覺得最重要的一步是什麼？", followUps: [{ english: "What would make the plan realistic for you?", chinese: "怎樣的安排對你來說比較做得到？" }], clinicalHint: "Match plans to readiness and practical barriers.", summaryKey: "next_steps", tags: ["plan"] },
+      { id: "rev-004", flow: "Review / Summary", cluster: "Review / Summary", type: "Function cluster", purpose: "Safety close", english: "If things get worse before our next contact, what will you do and who can you reach out to?", chinese: "如果下次聯絡前狀況變糟，你會怎麼做？可以找誰幫忙？", followUps: [{ english: "Can we write that plan down clearly?", chinese: "我們可以把這個計畫清楚寫下來嗎？" }], clinicalHint: "Use this especially when risk, isolation, or impulsivity is present.", summaryKey: "safety_plan", tags: ["safety"] }
+    ];
+
+    let mode = "bank";
+    let activeFlow = ALL;
+    let session = { questions: {}, skippedFlows: [], summary: "" };
+
+    const elements = {
+      totalPill: document.querySelector("#total-pill"),
+      askedPill: document.querySelector("#asked-pill"),
+      modeButtons: document.querySelectorAll(".mode-button"),
+      flowSelect: document.querySelector("#flow-select"),
+      searchInput: document.querySelector("#search-input"),
+      flowList: document.querySelector("#flow-list"),
+      skipFlow: document.querySelector("#skip-flow"),
+      cards: document.querySelector("#cards"),
+      activeTitle: document.querySelector("#active-title"),
+      resultCount: document.querySelector("#result-count"),
+      emptyState: document.querySelector("#empty-state"),
+      summaryOutput: document.querySelector("#summary-output"),
+      statAsked: document.querySelector("#stat-asked"),
+      statPositive: document.querySelector("#stat-positive"),
+      statNegative: document.querySelector("#stat-negative"),
+      statSkipped: document.querySelector("#stat-skipped"),
+      toast: document.querySelector("#toast")
+    };
 
     function escapeHtml(value) {
-      return value.replace(/[&<>"]/g, (character) => ({
-        "&": "&amp;",
-        "<": "&lt;",
-        ">": "&gt;",
-        "\"": "&quot;"
-      }[character]));
+      return String(value).replace(/[&<>"]/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;" }[character]));
+    }
+
+    function loadSession() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (raw) session = { ...session, ...JSON.parse(raw) };
+      } catch (error) {
+        session = { questions: {}, skippedFlows: [], summary: "" };
+      }
+      elements.summaryOutput.value = session.summary || "";
+    }
+
+    function saveSession() {
+      session.summary = elements.summaryOutput.value;
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(session));
+      updateStats();
+    }
+
+    function getQuestionKey(question) {
+      return question.id || question.summaryKey || `${question.flow}:${question.english}`;
+    }
+
+    function getQuestionState(question) {
+      const questionKey = typeof question === "string" ? question : getQuestionKey(question);
+      if (!session.questions[questionKey]) session.questions[questionKey] = { asked: false, status: "", note: "" };
+      return session.questions[questionKey];
     }
 
     function initControls() {
-      totalPill.textContent = `${QUESTION_BANK.length} questions`;
-      clusterSelect.innerHTML = clusters.map((cluster) => `<option value="${escapeHtml(cluster)}">${escapeHtml(cluster)}</option>`).join("");
-      clusterList.innerHTML = clusters.map((cluster) => (
-        `<button class="cluster-button${cluster === activeCluster ? " active" : ""}" type="button" data-cluster="${escapeHtml(cluster)}">${escapeHtml(cluster)}</button>`
-      )).join("");
+      elements.totalPill.textContent = `${QUESTION_BANK.length} questions`;
+      const flowOptions = [ALL, ...FLOWS].map((flow) => `<option value="${escapeHtml(flow)}">${escapeHtml(flow)}</option>`).join("");
+      elements.flowSelect.innerHTML = flowOptions;
+      renderFlowList();
+    }
+
+    function renderFlowList() {
+      elements.flowList.innerHTML = FLOWS.map((flow, index) => {
+        const flowQuestions = QUESTION_BANK.filter((question) => question.flow === flow);
+        const completed = flowQuestions.filter((question) => getQuestionState(question).asked).length;
+        const skipped = session.skippedFlows.includes(flow);
+        return `<button class="flow-button${flow === activeFlow ? " active" : ""}${skipped ? " skipped" : ""}" type="button" data-flow="${escapeHtml(flow)}">
+          <span class="flow-step">${index + 1}</span>
+          <span>${escapeHtml(flow)}</span>
+          <span class="flow-count">${completed}/${flowQuestions.length}</span>
+        </button>`;
+      }).join("");
+      elements.skipFlow.textContent = activeFlow === ALL ? "Select a flow to skip" : (session.skippedFlows.includes(activeFlow) ? "Unskip current flow" : "Skip current flow");
+      elements.skipFlow.disabled = activeFlow === ALL;
+    }
+
+    function setMode(nextMode) {
+      mode = nextMode;
+      elements.modeButtons.forEach((button) => button.classList.toggle("active", button.dataset.mode === mode));
+      if (mode === "flow" && activeFlow === ALL) activeFlow = FLOWS.find((flow) => !session.skippedFlows.includes(flow)) || FLOWS[0];
+      if (mode === "summary") generateSummary();
+      elements.flowSelect.value = activeFlow;
+      render();
+    }
+
+    function setFlow(flow) {
+      activeFlow = flow;
+      elements.flowSelect.value = flow;
+      if (flow !== ALL && mode === "bank") setMode("flow");
+      render();
     }
 
     function getFilteredQuestions() {
-      const keyword = searchInput.value.trim().toLowerCase();
+      const keyword = elements.searchInput.value.trim().toLowerCase();
       return QUESTION_BANK.filter((question) => {
-        const clusterMatches = activeCluster === ALL || question.cluster === activeCluster;
-        const text = [
-          question.cluster,
-          question.type,
-          question.purpose,
-          question.english,
-          question.chinese,
-          question.tags.join(" ")
-        ].join(" ").toLowerCase();
-        return clusterMatches && (!keyword || text.includes(keyword));
+        const flowMatches = activeFlow === ALL || question.flow === activeFlow;
+        const text = [question.id || "", question.flow, question.cluster, question.type, question.purpose, question.english, question.chinese, question.clinicalHint, question.tags.join(" ")].join(" ").toLowerCase();
+        return flowMatches && (!keyword || text.includes(keyword));
       });
     }
 
     function render() {
-      const filtered = getFilteredQuestions();
-      activeTitle.textContent = activeCluster === ALL ? "All Interview Questions" : activeCluster;
-      resultCount.textContent = `${filtered.length} result${filtered.length === 1 ? "" : "s"}`;
-      emptyState.classList.toggle("show", filtered.length === 0);
-      cards.innerHTML = filtered.map((question, index) => `
-        <details class="question-card" ${index < 2 ? "open" : ""}>
-          <summary>
-            <span class="question-title">
-              <span class="english">${escapeHtml(question.english)}</span>
-              <span class="chinese">${escapeHtml(question.chinese)}</span>
-            </span>
-            <span class="chevron" aria-hidden="true">+</span>
-          </summary>
-          <div class="question-body">
-            <div class="meta-row">
-              <span class="tag">${escapeHtml(question.cluster)}</span>
-              <span class="tag">${escapeHtml(question.type)}</span>
-              <span class="tag">${escapeHtml(question.purpose)}</span>
-              ${question.tags.map((tag) => `<span class="tag">#${escapeHtml(tag)}</span>`).join("")}
-            </div>
-            <button class="copy-button" type="button" data-copy="${escapeHtml(question.english)}">Copy English question</button>
-          </div>
-        </details>
-      `).join("");
+      const questions = getFilteredQuestions();
+      const titlePrefix = mode === "bank" ? "Question Bank" : mode === "flow" ? "Interview Flow" : "Summary Builder";
+      elements.activeTitle.textContent = activeFlow === ALL ? titlePrefix : `${titlePrefix}: ${activeFlow}`;
+      elements.resultCount.textContent = `${questions.length} result${questions.length === 1 ? "" : "s"}`;
+      elements.emptyState.classList.toggle("show", questions.length === 0);
+      elements.cards.innerHTML = questions.map(renderQuestionCard).join("");
+      renderFlowList();
+      updateStats();
     }
 
-    function setCluster(cluster) {
-      activeCluster = cluster;
-      clusterSelect.value = cluster;
-      document.querySelectorAll(".cluster-button").forEach((button) => {
-        button.classList.toggle("active", button.dataset.cluster === cluster);
-      });
+    function renderQuestionCard(question) {
+      const state = getQuestionState(question);
+      const followUps = question.followUps.map((followUp) => `<div class="follow-up"><strong>Follow-up:</strong> ${escapeHtml(followUp.english)}<br><span class="chinese">${escapeHtml(followUp.chinese)}</span></div>`).join("");
+      return `<article class="question-card" data-question-key="${escapeHtml(getQuestionKey(question))}">
+        <div class="question-top">
+          <input class="asked-checkbox" type="checkbox" aria-label="Mark asked" data-action="asked" ${state.asked ? "checked" : ""}>
+          <div>
+            <div class="english">${escapeHtml(question.english)}</div>
+            <div class="chinese">${escapeHtml(question.chinese)}</div>
+          </div>
+        </div>
+        <div class="question-body">
+          <div class="meta-row">
+            <span class="tag">${question.id ? `id: ${escapeHtml(question.id)}` : "id: optional"}</span>
+            <span class="tag">${escapeHtml(question.flow)}</span>
+            <span class="tag">${escapeHtml(question.purpose)}</span>
+            ${question.tags.map((tag) => `<span class="tag">#${escapeHtml(tag)}</span>`).join("")}
+          </div>
+          <div class="status-row" aria-label="Answer status">
+            <button class="status-button ${state.status === "positive" ? "active" : ""}" type="button" data-action="status" data-status="positive">Positive</button>
+            <button class="status-button ${state.status === "negative" ? "active" : ""}" type="button" data-action="status" data-status="negative">Negative</button>
+            <button class="status-button ${state.status === "unclear" ? "active" : ""}" type="button" data-action="status" data-status="unclear">Unclear</button>
+          </div>
+          <label>
+            <span class="field-label">Patient answer / note</span>
+            <textarea class="note-input" data-action="note" placeholder="輸入病人回答或臨床筆記...">${escapeHtml(state.note)}</textarea>
+          </label>
+          <div class="follow-ups">${followUps}</div>
+          <div class="hint"><strong>Clinical hint:</strong> ${escapeHtml(question.clinicalHint)}</div>
+          <button class="copy-button" type="button" data-action="copy-question">Copy English question</button>
+        </div>
+      </article>`;
+    }
+
+    function updateQuestionState(card, updater) {
+      const questionKey = card.dataset.questionKey;
+      const state = getQuestionState(questionKey);
+      updater(state);
+      saveSession();
+      renderFlowList();
+      updateStats();
+    }
+
+    function toggleSkipCurrentFlow() {
+      if (activeFlow === ALL) return;
+      const skipped = new Set(session.skippedFlows);
+      if (skipped.has(activeFlow)) skipped.delete(activeFlow); else skipped.add(activeFlow);
+      session.skippedFlows = [...skipped];
+      saveSession();
       render();
     }
 
-    async function copyText(text) {
+    function updateStats() {
+      const states = Object.values(session.questions);
+      const asked = states.filter((state) => state.asked).length;
+      const positive = states.filter((state) => state.status === "positive").length;
+      const negative = states.filter((state) => state.status === "negative").length;
+      elements.askedPill.textContent = `${asked} asked`;
+      elements.statAsked.textContent = asked;
+      elements.statPositive.textContent = positive;
+      elements.statNegative.textContent = negative;
+      elements.statSkipped.textContent = session.skippedFlows.length;
+    }
+
+    function generateSummary() {
+      const askedQuestions = QUESTION_BANK.filter((question) => getQuestionState(question).asked);
+      const lines = [
+        "The patient was interviewed using a structured psychiatric interview workflow.",
+        ""
+      ];
+
+      for (const flow of FLOWS) {
+        const flowQuestions = askedQuestions.filter((question) => question.flow === flow);
+        if (flowQuestions.length === 0) {
+          if (session.skippedFlows.includes(flow)) lines.push(`${flow}: This section was skipped.`);
+          continue;
+        }
+
+        lines.push(`${flow}:`);
+        for (const question of flowQuestions) {
+          const state = getQuestionState(question);
+          const statusText = state.status ? state.status : "asked";
+          const note = state.note.trim() ? ` Patient answer: ${state.note.trim()}` : "";
+          lines.push(`- ${question.purpose}: ${statusText}.${note}`);
+        }
+        lines.push("");
+      }
+
+      const riskStates = ["passive_si", "active_si", "suicide_plan", "violence_risk"].map((key) => {
+        const question = QUESTION_BANK.find((item) => item.summaryKey === key);
+        return question ? getQuestionState(question).status : "";
+      });
+      if (riskStates.includes("positive")) lines.push("Risk note: At least one safety-risk item was endorsed and requires clinical risk assessment and safety planning.");
+      if (askedQuestions.length === 0) lines.push("No interview items have been marked as asked yet.");
+
+      elements.summaryOutput.value = lines.join("\n").replace(/\n{3,}/g, "\n\n").trim();
+      saveSession();
+      showToast("已產生英文摘要");
+    }
+
+    async function copyText(text, message = "已複製") {
       try {
         await navigator.clipboard.writeText(text);
       } catch (error) {
@@ -943,27 +760,60 @@
         document.execCommand("copy");
         textArea.remove();
       }
-      toast.classList.add("show");
-      window.setTimeout(() => toast.classList.remove("show"), 1500);
+      showToast(message);
     }
 
-    clusterSelect.addEventListener("change", (event) => setCluster(event.target.value));
-    searchInput.addEventListener("input", render);
-    clusterList.addEventListener("click", (event) => {
-      const button = event.target.closest("button[data-cluster]");
-      if (button) setCluster(button.dataset.cluster);
+    function showToast(message) {
+      elements.toast.textContent = message;
+      elements.toast.classList.add("show");
+      window.setTimeout(() => elements.toast.classList.remove("show"), 1500);
+    }
+
+    elements.modeButtons.forEach((button) => button.addEventListener("click", () => setMode(button.dataset.mode)));
+    elements.flowSelect.addEventListener("change", (event) => setFlow(event.target.value));
+    elements.searchInput.addEventListener("input", render);
+    elements.flowList.addEventListener("click", (event) => {
+      const button = event.target.closest("button[data-flow]");
+      if (button) setFlow(button.dataset.flow);
     });
-    cards.addEventListener("click", (event) => {
-      const button = event.target.closest("button[data-copy]");
-      if (button) copyText(button.dataset.copy);
+    elements.skipFlow.addEventListener("click", toggleSkipCurrentFlow);
+    document.querySelector("#clear-filters").addEventListener("click", () => { elements.searchInput.value = ""; activeFlow = ALL; elements.flowSelect.value = ALL; setMode("bank"); });
+    document.querySelector("#generate-summary").addEventListener("click", generateSummary);
+    document.querySelector("#generate-summary-top").addEventListener("click", () => { setMode("summary"); generateSummary(); });
+    document.querySelector("#copy-summary").addEventListener("click", () => copyText(elements.summaryOutput.value, "已複製英文摘要"));
+    document.querySelector("#clear-session").addEventListener("click", () => {
+      if (!confirm("Clear all asked marks, notes, skipped flows, and summary?")) return;
+      session = { questions: {}, skippedFlows: [], summary: "" };
+      elements.summaryOutput.value = "";
+      localStorage.removeItem(STORAGE_KEY);
+      render();
+      showToast("Session cleared");
     });
-    document.querySelector("#expand-all").addEventListener("click", () => {
-      document.querySelectorAll("details.question-card").forEach((detail) => detail.open = true);
+    elements.summaryOutput.addEventListener("input", saveSession);
+    elements.cards.addEventListener("change", (event) => {
+      const card = event.target.closest(".question-card");
+      if (!card) return;
+      if (event.target.dataset.action === "asked") updateQuestionState(card, (state) => state.asked = event.target.checked);
+      if (event.target.dataset.action === "note") updateQuestionState(card, (state) => { state.note = event.target.value; state.asked = true; });
     });
-    document.querySelector("#collapse-all").addEventListener("click", () => {
-      document.querySelectorAll("details.question-card").forEach((detail) => detail.open = false);
+    elements.cards.addEventListener("input", (event) => {
+      const card = event.target.closest(".question-card");
+      if (card && event.target.dataset.action === "note") updateQuestionState(card, (state) => { state.note = event.target.value; state.asked = true; });
+    });
+    elements.cards.addEventListener("click", (event) => {
+      const card = event.target.closest(".question-card");
+      if (!card) return;
+      if (event.target.dataset.action === "status") {
+        updateQuestionState(card, (state) => { state.status = state.status === event.target.dataset.status ? "" : event.target.dataset.status; state.asked = true; });
+        render();
+      }
+      if (event.target.dataset.action === "copy-question") {
+        const question = QUESTION_BANK.find((item) => getQuestionKey(item) === card.dataset.questionKey);
+        if (question) copyText(question.english, "已複製英文問句");
+      }
     });
 
+    loadSession();
     initControls();
     render();
   </script>
